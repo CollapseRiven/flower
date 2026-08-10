@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>個人記帳與預算管理系統</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Microsoft JhengHei', sans-serif; }
+    body { background-color: #f4f7fc; color: #333; margin: 0; padding: 20px; }
+    
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1200px;
+      margin: 0 auto 20px auto;
+      background: #ffffff;
+      padding: 15px 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+
+    h1 { color: #1c355e; margin: 0; font-size: 1.5rem; }
+
+    .month-picker-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: bold;
+      color: #1c355e;
+    }
+
+    .month-picker-container input[type="month"] {
+      padding: 6px 12px;
+      font-size: 1rem;
+      border: 2px solid #9fc5e8;
+      border-radius: 6px;
+      outline: none;
+      background-color: #fff;
+      cursor: pointer;
+    }
+
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* 左側明細區 */
+    .left-panel {
+      flex: 1 1 600px;
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+
+    /* 右側儀表板區 */
+    .right-panel {
+      flex: 1 1 350px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .card {
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+
+    h2 { font-size: 1.1rem; color: #1c355e; margin-top: 0; margin-bottom: 15px; border-bottom: 2px solid #9fc5e8; padding-bottom: 5px; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #e0e0e0; padding: 8px 10px; text-align: center; font-size: 0.95rem; }
+    
+    .left-panel th { background-color: #c5d1ec; color: #1c355e; }
+    .right-panel th { background-color: #9fc5e8; color: #1c355e; }
+
+    tfoot tr { background-color: #eef5fc; font-weight: bold; }
+
+    input, select {
+      width: 100%;
+      padding: 6px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      text-align: center;
+    }
+
+    input[type="number"] { text-align: right; }
+    .bg-yellow { background-color: #fff2cc; }
+
+    .btn-add {
+      width: 100%;
+      background-color: #1c355e;
+      color: white;
+      border: none;
+      padding: 10px;
+      margin-top: 15px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 1rem;
+    }
+    .btn-add:hover { background-color: #2c4c82; }
+
+    .btn-del {
+      background-color: #ff4d4f;
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .action-box {
+      border: 1px solid #9fc5e8;
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 12px;
+    }
+    .atm-box { background: #eef5fc; }
+    .income-box { background: #eafaf1; border-color: #82e0aa; }
+
+    .action-btn {
+      color: white;
+      border: none;
+      padding: 8px;
+      width: 100%;
+      margin-top: 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .atm-btn { background-color: #28a745; }
+    .atm-btn:hover { background-color: #218838; }
+    
+    .income-btn { background-color: #17a2b8; }
+    .income-btn:hover { background-color: #138496; }
+
+    .alert-banner {
+      background-color: #e8f4f8;
+      border-left: 5px solid #17a2b8;
+      padding: 10px 15px;
+      margin-bottom: 15px;
+      font-size: 0.9rem;
+      border-radius: 4px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 頂部月份選單列 -->
+  <div class="header-bar">
+    <h1>💰 個人記帳與預算管理</h1>
+    <div class="month-picker-container">
+      <label for="currentMonth">📅 檢視月份：</label>
+      <input type="month" id="currentMonth" onchange="onMonthChange()">
+    </div>
+  </div>
+
+  <div class="container">
+    
+    <!-- 左側：消費與明細紀錄 -->
+    <div class="left-panel">
+      <div id="noticeBanner" class="alert-banner"></div>
+
+      <h2>新增消費紀錄</h2>
+      <form id="txForm" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px;">
+        <input type="date" id="txDate" required style="flex: 1 1 120px;">
+        <input type="text" id="txItem" placeholder="項目描述" required style="flex: 1 1 120px;">
+        <select id="txCategory" style="flex: 1 1 100px;"></select>
+        <select id="txPayment" style="flex: 1 1 100px;">
+          <option value="現金">現金</option>
+          <option value="電子支付">電子支付</option>
+        </select>
+        <input type="number" id="txAmount" placeholder="金額" required min="1" style="flex: 1 1 100px;">
+        <button type="submit" class="btn-add">新增記錄</button>
+      </form>
+
+      <h2>收支明細 (<span id="displayMonthText"></span>)</h2>
+      <table id="txTable">
+        <thead>
+          <tr>
+            <th>日期</th>
+            <th>項目</th>
+            <th>分類</th>
+            <th>支付方式</th>
+            <th>金額</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- 右側：預算與資產餘額 -->
+    <div class="right-panel">
+      
+      <!-- 預算餘額表 -->
+      <div class="card">
+        <h2>分類預算與餘額 (<span id="budgetMonthText"></span>)</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>項目</th>
+              <th>預算金額</th>
+              <th>目前餘額</th>
+            </tr>
+          </thead>
+          <tbody id="budgetTable"></tbody>
+          <tfoot>
+            <tr>
+              <td><strong>總和 (TOTAL)</strong></td>
+              <td id="totalBudgetDisplay">$0</td>
+              <td id="totalRemDisplay">$0</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- 帳戶餘額表 -->
+      <div class="card">
+        <h2>帳戶餘額管理</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>帳戶類別</th>
+              <th>餘額 (可手動調整)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>現金</strong></td>
+              <td><input type="number" id="accountCash" class="bg-yellow" value="5000" onchange="saveAccounts()"></td>
+            </tr>
+            <tr>
+              <td><strong>銀行 / 電子支付</strong></td>
+              <td><input type="number" id="accountBank" class="bg-yellow" value="50000" onchange="saveAccounts()"></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- ATM 提款機專區 -->
+        <div class="action-box atm-box">
+          <label style="font-weight: bold; color: #1c355e;">🏧 提款機提款</label>
+          <p style="font-size: 0.85rem; color: #666; margin: 4px 0;">扣除銀行餘額，增加現金餘額，輸入框自動歸零。</p>
+          <input type="number" id="atmAmount" placeholder="輸入提款金額" min="1" class="bg-yellow">
+          <button type="button" class="action-btn atm-btn" onclick="withdrawATM()">確認提款</button>
+        </div>
+
+        <!-- 薪水/資金入帳專區 -->
+        <div class="action-box income-box">
+          <label style="font-weight: bold; color: #1c355e;">💵 薪水 / 資金入帳</label>
+          <p style="font-size: 0.85rem; color: #666; margin: 4px 0;">直接增加銀行存款，輸入框自動歸零。</p>
+          <input type="number" id="incomeAmount" placeholder="輸入入帳金額" min="1" class="bg-yellow">
+          <button type="button" class="action-btn income-btn" onclick="depositIncome()">確認入帳</button>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    // 預設分類項目清單
+    const defaultCategories = [
+      { name: "吃飯", budget: 10000 },
+      { name: "汽車保養", budget: 5000 },
+      { name: "油錢/停車費", budget: 3000 },
+      { name: "娛樂", budget: 5000 },
+      { name: "電信", budget: 1000 },
+      { name: "預備金", budget: 10000 }
+    ];
+
+    let categories = [];
+    let transactions = JSON.parse(localStorage.getItem("my_tx")) || [];
+    let initializedMonths = JSON.parse(localStorage.getItem("my_init_months")) || [];
+
+    // 初始化載入分類（確保不為空）
+    function loadCategories() {
+      const stored = localStorage.getItem("my_categories");
+      if (stored) {
+        try {
+          categories = JSON.parse(stored);
+        } catch (e) {
+          categories = [];
+        }
+      }
+      if (!categories || categories.length === 0) {
+        categories = JSON.parse(JSON.stringify(defaultCategories));
+        saveCategories();
+      }
+    }
+
+    // 初始化頁面
+    document.addEventListener("DOMContentLoaded", () => {
+      const now = new Date();
+      const yearMonth = now.toISOString().slice(0, 7);
+      document.getElementById("currentMonth").value = yearMonth;
+      document.getElementById("txDate").valueAsDate = now;
+
+      // 載入帳戶餘額
+      if(localStorage.getItem("my_cash") !== null) {
+        document.getElementById("accountCash").value = localStorage.getItem("my_cash");
+      }
+      if(localStorage.getItem("my_bank") !== null) {
+        document.getElementById("accountBank").value = localStorage.getItem("my_bank");
+      }
+
+      loadCategories();
+      initCategoryDropdown();
+      checkMonthlySettlementAndInvestment();
+      render();
+    });
+
+    // 儲存帳戶與分類預算
+    function saveAccounts() {
+      const cash = parseFloat(document.getElementById("accountCash").value) || 0;
+      const bank = parseFloat(document.getElementById("accountBank").value) || 0;
+      localStorage.setItem("my_cash", cash);
+      localStorage.setItem("my_bank", bank);
+    }
+
+    function saveCategories() {
+      localStorage.setItem("my_categories", JSON.stringify(categories));
+    }
+
+    // 渲染分類下拉選單
+    function initCategoryDropdown() {
+      const select = document.getElementById("txCategory");
+      select.innerHTML = categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    }
+
+    // 當切換月份時觸發
+    function onMonthChange() {
+      checkMonthlySettlementAndInvestment();
+      render();
+    }
+
+    // 計算指定月份各分類剩餘金額
+    function getMonthRemaining(monthStr) {
+      const monthTx = transactions.filter(t => t.date.startsWith(monthStr));
+      let totalRemaining = 0;
+      categories.forEach(c => {
+        const spent = monthTx.filter(t => t.category === c.name).reduce((sum, t) => sum + t.amount, 0);
+        totalRemaining += (c.budget - spent);
+      });
+      return totalRemaining;
+    }
+
+    // 取得上一個月份字串 (YYYY-MM)
+    function getPrevMonthStr(currentMonthStr) {
+      const [year, month] = currentMonthStr.split('-').map(Number);
+      const prevDate = new Date(year, month - 2, 1);
+      return prevDate.toISOString().slice(0, 7);
+    }
+
+    // 自動結算與16號固定扣款檢查
+    function checkMonthlySettlementAndInvestment() {
+      const selectedMonth = document.getElementById("currentMonth").value;
+      const banner = document.getElementById("noticeBanner");
+      banner.style.display = "none";
+      banner.innerHTML = "";
+
+      let bank = parseFloat(document.getElementById("accountBank").value) || 0;
+      let totalBudget = categories.reduce((sum, c) => sum + c.budget, 0);
+
+      // 1. 檢查是否需要進行跨月預算回收與提撥
+      if (!initializedMonths.includes(selectedMonth)) {
+        const prevMonth = getPrevMonthStr(selectedMonth);
+        const hasPrevTx = transactions.some(t => t.date.startsWith(prevMonth));
+        let recovered = 0;
+
+        if (hasPrevTx) {
+          recovered = getMonthRemaining(prevMonth);
+          bank += recovered; // 上月餘額回收納入銀行
+        }
+
+        bank -= totalBudget; // 從銀行存款扣除新月預算提撥
+
+        document.getElementById("accountBank").value = bank;
+        saveAccounts();
+
+        initializedMonths.push(selectedMonth);
+        localStorage.setItem("my_init_months", JSON.stringify(initializedMonths));
+
+        banner.style.display = "block";
+        banner.innerHTML = `⚙️ <strong>${selectedMonth} 月份預算初始化完成：</strong><br>` +
+          (hasPrevTx ? `• 已回收上月 (${prevMonth}) 剩餘預算：+$${recovered.toLocaleString()}<br>` : '') +
+          `• 已從銀行存款提撥當月總預算：-$${totalBudget.toLocaleString()}`;
+      }
+
+      // 2. 每月 16 號固定扣投資 $5,000 (自動檢查)
+      const now = new Date();
+      const currentRealMonth = now.toISOString().slice(0, 7);
+      const currentDay = now.getDate();
+
+      if (selectedMonth < currentRealMonth || (selectedMonth === currentRealMonth && currentDay >= 16)) {
+        const hasInvested = transactions.some(t => t.date.startsWith(selectedMonth) && t.item === "自動扣款：投資");
+
+        if (!hasInvested) {
+          const investDate = `${selectedMonth}-16`;
+          const amount = 5000;
+
+          bank = parseFloat(document.getElementById("accountBank").value) || 0;
+          bank -= amount;
+          document.getElementById("accountBank").value = bank;
+          saveAccounts();
+
+          transactions.push({
+            id: Date.now(),
+            date: investDate,
+            item: "自動扣款：投資",
+            category: "-",
+            payment: "電子支付",
+            amount: amount
+          });
+          localStorage.setItem("my_tx", JSON.stringify(transactions));
+
+          banner.style.display = "block";
+          banner.innerHTML += `<br>📈 <strong>16號定額投資觸發：</strong>已自動從銀行存款扣除 $5,000 用於投資。`;
+        }
+      }
+    }
+
+    // ATM 提款
+    function withdrawATM() {
+      const atmInput = document.getElementById("atmAmount");
+      const amount = parseFloat(atmInput.value);
+
+      if (!amount || amount <= 0) {
+        alert("請輸入有效的提款金額！");
+        return;
+      }
+
+      let cash = parseFloat(document.getElementById("accountCash").value) || 0;
+      let bank = parseFloat(document.getElementById("accountBank").value) || 0;
+
+      bank -= amount;
+      cash += amount;
+
+      document.getElementById("accountCash").value = cash;
+      document.getElementById("accountBank").value = bank;
+      saveAccounts();
+
+      transactions.push({
+        id: Date.now(),
+        date: document.getElementById("txDate").value || new Date().toISOString().split('T')[0],
+        item: "ATM 提款",
+        category: "-",
+        payment: "ATM提款",
+        amount: amount
+      });
+
+      atmInput.value = "";
+      saveAndRender();
+      alert(`成功提款 $${amount}！已扣除銀行並轉入現金餘額。`);
+    }
+
+    // 薪水入帳
+    function depositIncome() {
+      const incomeInput = document.getElementById("incomeAmount");
+      const amount = parseFloat(incomeInput.value);
+
+      if (!amount || amount <= 0) {
+        alert("請輸入有效的入帳金額！");
+        return;
+      }
+
+      let bank = parseFloat(document.getElementById("accountBank").value) || 0;
+      bank += amount;
+
+      document.getElementById("accountBank").value = bank;
+      saveAccounts();
+
+      incomeInput.value = "";
+      alert(`成功入帳 $${amount}！已直接存入銀行餘額。`);
+    }
+
+    // 新增消費紀錄
+    document.getElementById("txForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const amount = parseFloat(document.getElementById("txAmount").value);
+      const payment = document.getElementById("txPayment").value;
+
+      const tx = {
+        id: Date.now(),
+        date: document.getElementById("txDate").value,
+        item: document.getElementById("txItem").value,
+        category: document.getElementById("txCategory").value,
+        payment: payment,
+        amount: amount
+      };
+
+      let cash = parseFloat(document.getElementById("accountCash").value) || 0;
+      let bank = parseFloat(document.getElementById("accountBank").value) || 0;
+
+      if (payment === "現金") cash -= amount;
+      if (payment === "電子支付") bank -= amount;
+
+      document.getElementById("accountCash").value = cash;
+      document.getElementById("accountBank").value = bank;
+      saveAccounts();
+
+      transactions.push(tx);
+      document.getElementById("txItem").value = "";
+      document.getElementById("txAmount").value = "";
+      saveAndRender();
+    });
+
+    // 刪除紀錄
+    function deleteTx(id) {
+      const tx = transactions.find(t => t.id === id);
+      if (tx) {
+        let cash = parseFloat(document.getElementById("accountCash").value) || 0;
+        let bank = parseFloat(document.getElementById("accountBank").value) || 0;
+
+        if (tx.payment === "現金") cash += tx.amount;
+        if (tx.payment === "電子支付") bank += tx.amount;
+        if (tx.payment === "ATM提款") {
+          cash -= tx.amount;
+          bank += tx.amount;
+        }
+
+        document.getElementById("accountCash").value = cash;
+        document.getElementById("accountBank").value = bank;
+        saveAccounts();
+      }
+
+      transactions = transactions.filter(t => t.id !== id);
+      saveAndRender();
+    }
+
+    // 儲存與渲染
+    function saveAndRender() {
+      localStorage.setItem("my_tx", JSON.stringify(transactions));
+      render();
+    }
+
+    function render() {
+      const selectedMonth = document.getElementById("currentMonth").value;
+      document.getElementById("displayMonthText").innerText = selectedMonth;
+      document.getElementById("budgetMonthText").innerText = selectedMonth;
+
+      const monthTx = transactions.filter(t => t.date.startsWith(selectedMonth));
+
+      // 1. 渲染明細表格
+      const tbody = document.querySelector("#txTable tbody");
+      tbody.innerHTML = "";
+      monthTx.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(t => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${t.date}</td>
+          <td>${t.item}</td>
+          <td>${t.category}</td>
+          <td>${t.payment}</td>
+          <td>$${t.amount.toLocaleString()}</td>
+          <td><button class="btn-del" onclick="deleteTx(${t.id})">刪除</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // 2. 計算分類預算餘額與總和
+      const budgetTbody = document.getElementById("budgetTable");
+      budgetTbody.innerHTML = "";
+
+      let totalBudgetSum = 0;
+      let totalRemSum = 0;
+
+      categories.forEach((c, idx) => {
+        const spent = monthTx
+          .filter(t => t.category === c.name)
+          .reduce((sum, t) => sum + t.amount, 0);
+
+        const rem = c.budget - spent;
+
+        totalBudgetSum += c.budget;
+        totalRemSum += rem;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><strong>${c.name}</strong></td>
+          <td><input type="number" value="${c.budget}" class="bg-yellow" onchange="updateBudget(${idx}, this.value)"></td>
+          <td style="color: ${rem < 0 ? 'red' : 'black'}; font-weight: bold;">$${rem.toLocaleString()}</td>
+        `;
+        budgetTbody.appendChild(tr);
+      });
+
+      // 更新分類總和列 (TOTAL)
+      document.getElementById("totalBudgetDisplay").innerText = `$${totalBudgetSum.toLocaleString()}`;
+      const totalRemElem = document.getElementById("totalRemDisplay");
+      totalRemElem.innerText = `$${totalRemSum.toLocaleString()}`;
+      totalRemElem.style.color = totalRemSum < 0 ? 'red' : 'black';
+    }
+
+    function updateBudget(idx, val) {
+      categories[idx].budget = parseFloat(val) || 0;
+      saveCategories();
+      render();
+    }
+  </script>
+</body>
+</html>
